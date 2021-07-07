@@ -16,14 +16,17 @@ impl fmt::Display for CharCount {
 impl fmt::Debug for CharCount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("")
-        .field(&self.count)
-        .field(&self.letter)
-        .finish()
+            .field(&self.count)
+            .field(&self.letter)
+            .finish()
     }
 }
 impl CharCount {
     /// Returns a new CharCount from a given letter
     pub fn new(letter: char) -> CharCount {
-        CharCount {letter: letter, count: 1}
+        CharCount {
+            letter: letter,
+            count: 1,
+        }
     }
 }

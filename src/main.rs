@@ -1,11 +1,11 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::collections::HashMap;
 use structopt::StructOpt;
 
-pub mod charlist;
 pub mod charcount;
+pub mod charlist;
 
 use charlist::CharList;
 use charlist::MatchResult;
@@ -27,7 +27,6 @@ struct Opt {
 }
 
 fn main() {
-
     let opt = Opt::from_args();
     let words = read_words(opt.wordfile, opt.minimum_candidate);
     let goal = CharList::from_string(&opt.goal.to_lowercase());
@@ -39,7 +38,7 @@ fn main() {
     let anagrams = anagram(&goal, candidates, opt.maximum_words_in_anagram);
     for set in anagrams {
         for clist in set {
-            print!(" [");
+            print!(" [ ");
             let wordset = words.get(clist).unwrap();
             for word in wordset {
                 print!("{} ", word)
@@ -48,11 +47,14 @@ fn main() {
         }
         println!("");
     }
-
 }
 
-fn anagram<'a>(goal: &CharList, words: Vec<&'a Box<CharList>>, iteration_level: usize) -> Vec<Vec<&'a Box<CharList>>> {
-    let mut results:  Vec<Vec<&Box<CharList>>> = Vec::new();
+fn anagram<'a>(
+    goal: &CharList,
+    words: Vec<&'a Box<CharList>>,
+    iteration_level: usize,
+) -> Vec<Vec<&'a Box<CharList>>> {
+    let mut results: Vec<Vec<&Box<CharList>>> = Vec::new();
     if iteration_level == 0 {
         return results;
     }
@@ -65,11 +67,11 @@ fn anagram<'a>(goal: &CharList, words: Vec<&'a Box<CharList>>, iteration_level: 
                 // add to results
                 let v = vec![*w];
                 results.push(v);
-            },
+            }
             MatchResult::PartialMatch(remains) => {
                 // create a new candidate list from words starting here, filtered
                 let mut candidates = Vec::new();
-                for newindex in index .. words.len() {
+                for newindex in index..words.len() {
                     candidates.push(words[newindex]);
                 }
                 let candidates = filter_candidates(goal, candidates);
@@ -87,7 +89,10 @@ fn anagram<'a>(goal: &CharList, words: Vec<&'a Box<CharList>>, iteration_level: 
     return results;
 }
 
-fn filter_candidates<'a>(goal: &CharList, candidates: Vec<&'a Box<CharList>>) -> Vec<&'a Box<CharList>>{
+fn filter_candidates<'a>(
+    goal: &CharList,
+    candidates: Vec<&'a Box<CharList>>,
+) -> Vec<&'a Box<CharList>> {
     let mut v: Vec<&Box<CharList>> = Vec::new();
     for c in candidates {
         if c.length() <= goal.length() {
@@ -102,12 +107,17 @@ fn filter_candidates<'a>(goal: &CharList, candidates: Vec<&'a Box<CharList>>) ->
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where P: AsRef<Path>, {
+where
+    P: AsRef<Path>,
+{
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
 }
 
-fn read_words(filename: std::path::PathBuf, minimum_length: usize) -> HashMap<Box<CharList>, Vec<String>> {
+fn read_words(
+    filename: std::path::PathBuf,
+    minimum_length: usize,
+) -> HashMap<Box<CharList>, Vec<String>> {
     let mut map = HashMap::new();
     match read_lines(filename) {
         Ok(lines) => {
@@ -122,11 +132,10 @@ fn read_words(filename: std::path::PathBuf, minimum_length: usize) -> HashMap<Bo
                                 let candidates = map.get_mut(&key).unwrap();
                                 if !candidates.contains(&word) {
                                     candidates.push(word);
-
                                 }
                             }
                         }
-                    },
+                    }
                     Err(_) => return map,
                 }
             }
@@ -135,5 +144,3 @@ fn read_words(filename: std::path::PathBuf, minimum_length: usize) -> HashMap<Bo
     };
     return map;
 }
-
-
