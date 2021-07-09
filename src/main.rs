@@ -26,7 +26,8 @@ struct Opt {
     maximum_words_in_anagram: usize,
 }
 
-fn main() {
+#[tokio::main]
+pub async fn main() {
     let opt = Opt::from_args();
     let words = read_words(opt.wordfile, opt.minimum_candidate);
     let goal = CharList::from_string(&opt.goal.to_lowercase());
@@ -34,7 +35,7 @@ fn main() {
     for key in words.keys() {
         candidates.push(key)
     }
-    let candidates = filter_candidates(&goal, candidates);
+    let candidates = filter_candidates(&goal, &candidates[..]);
     let anagrams = anagram(&goal, candidates, opt.maximum_words_in_anagram);
     for set in anagrams {
         for clist in set {
@@ -47,6 +48,7 @@ fn main() {
         }
         println!("");
     }
+
 }
 
 fn anagram<'a>(
@@ -59,30 +61,37 @@ fn anagram<'a>(
         return results;
     }
 
-    for (index, w) in words.iter().enumerate() {
-        let m = CharList::subtract(goal, &**w);
-        match m {
-            MatchResult::NoMatch => (),
-            MatchResult::FullMatch => {
-                // add to results
-                let v = vec![*w];
-                results.push(v);
-            }
-            MatchResult::PartialMatch(remains) => {
-                // create a new candidate list from words starting here, filtered
-                let mut candidates = Vec::new();
-                for newindex in index..words.len() {
-                    candidates.push(words[newindex]);
+    for (index, _) in words.iter().enumerate() {
+
+        let news = try_one_word(goal, &words[index..], iteration_level);
+        for n in news {
+            results.push(n);
+        }
+    }
+    return results;
+}
+
+fn try_one_word<'a>(goal: &CharList, candidates: &[&'a Box<CharList>], iteration_level: usize) -> Vec<Vec<&'a Box<CharList>>> {
+    
+    let mut results: Vec<Vec<&Box<CharList>>> = Vec::new();
+    let m = CharList::subtract(goal, candidates[0]);
+
+    match m {
+        MatchResult::NoMatch => (),
+        MatchResult::FullMatch => {
+            // add to results
+            results.push(vec![candidates[0]]);
+        }
+        MatchResult::PartialMatch(remains) => {
+            let word = candidates[0];
+            let candidates = filter_candidates(goal, candidates);
+            let new_anagrams = anagram(&remains, candidates, iteration_level - 1);
+            for news in new_anagrams {
+                let mut first = vec![word];
+                for x in news {
+                    first.push(x);
                 }
-                let candidates = filter_candidates(goal, candidates);
-                let new_anagrams = anagram(&remains, candidates, iteration_level - 1);
-                for news in new_anagrams {
-                    let mut first = vec![*w];
-                    for x in news {
-                        first.push(x);
-                    }
-                    results.push(first);
-                }
+                results.push(first);
             }
         }
     }
@@ -91,7 +100,7 @@ fn anagram<'a>(
 
 fn filter_candidates<'a>(
     goal: &CharList,
-    candidates: Vec<&'a Box<CharList>>,
+    candidates: &[&'a Box<CharList>],
 ) -> Vec<&'a Box<CharList>> {
     let mut v: Vec<&Box<CharList>> = Vec::new();
     for c in candidates {
@@ -124,7 +133,7 @@ fn read_words(
             for line in lines {
                 match line {
                     Ok(word) => {
-                        if word.len() > minimum_length {
+                        if word.len() >= minimum_length {
                             let key = Box::new(CharList::from_string(&word.to_lowercase()));
                             if !map.contains_key(&key) {
                                 map.insert(key, vec![word]);
