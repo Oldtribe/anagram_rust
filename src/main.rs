@@ -4,6 +4,8 @@ use std::io::{self, BufRead};
 use std::path::Path;
 use structopt::StructOpt;
 
+use rayon::prelude::*;
+
 pub mod charcount;
 pub mod charlist;
 
@@ -26,8 +28,7 @@ struct Opt {
     maximum_words_in_anagram: usize,
 }
 
-#[tokio::main]
-pub async fn main() {
+pub fn main() {
     let opt = Opt::from_args();
     let words = read_words(opt.wordfile, opt.minimum_candidate);
     let goal = CharList::from_string(&opt.goal.to_lowercase());
@@ -36,7 +37,7 @@ pub async fn main() {
         candidates.push(key)
     }
     let candidates = filter_candidates(&goal, &candidates[..]);
-    let anagrams = anagram_async(&goal, candidates, opt.maximum_words_in_anagram).await;
+    let anagrams = anagram(&goal, candidates, opt.maximum_words_in_anagram);
     for set in anagrams {
         for clist in set {
             print!(" [ ");
@@ -48,27 +49,6 @@ pub async fn main() {
         }
         println!("");
     }
-
-}
-
-async fn anagram_async<'a>(
-    goal: &CharList,
-    words: Vec<&'a Box<CharList>>,
-    iteration_level: usize,
-) -> Vec<Vec<&'a Box<CharList>>> {
-    let mut results: Vec<Vec<&Box<CharList>>> = Vec::new();
-    if iteration_level == 0 {
-        return results;
-    }
-
-    for (index, _) in words.iter().enumerate() {
-
-        let news = try_one_word_async(goal, &words[index..], iteration_level).await;
-        for n in news {
-            results.push(n);
-        }
-    }
-    return results;
 }
 
 fn anagram<'a>(
@@ -76,48 +56,27 @@ fn anagram<'a>(
     words: Vec<&'a Box<CharList>>,
     iteration_level: usize,
 ) -> Vec<Vec<&'a Box<CharList>>> {
-    let mut results: Vec<Vec<&Box<CharList>>> = Vec::new();
+    let results: Vec<Vec<&Box<CharList>>> = Vec::new();
     if iteration_level == 0 {
         return results;
     }
 
-    for (index, _) in words.iter().enumerate() {
-
-        let news = try_one_word(goal, &words[index..], iteration_level);
-        for n in news {
-            results.push(n);
-        }
-    }
+    let results = words
+        .par_iter()
+        .enumerate()
+        .map(|(index, _)| {
+            try_one_word(goal, &words[index..], iteration_level)
+        })
+        .flatten()
+        .collect::<Vec<_>>();
     return results;
 }
-async fn try_one_word_async<'a>(goal: &CharList, candidates: &[&'a Box<CharList>], iteration_level: usize) -> Vec<Vec<&'a Box<CharList>>> {
-    
-    let mut results: Vec<Vec<&Box<CharList>>> = Vec::new();
-    let m = CharList::subtract(goal, candidates[0]);
 
-    match m {
-        MatchResult::NoMatch => (),
-        MatchResult::FullMatch => {
-            // add to results
-            results.push(vec![candidates[0]]);
-        }
-        MatchResult::PartialMatch(remains) => {
-            let word = candidates[0];
-            let candidates = filter_candidates(goal, candidates);
-            let new_anagrams = anagram(&remains, candidates, iteration_level - 1);
-            for news in new_anagrams {
-                let mut first = vec![word];
-                for x in news {
-                    first.push(x);
-                }
-                results.push(first);
-            }
-        }
-    }
-    return results;
-}
-fn try_one_word<'a>(goal: &CharList, candidates: &[&'a Box<CharList>], iteration_level: usize) -> Vec<Vec<&'a Box<CharList>>> {
-    
+fn try_one_word<'a>(
+    goal: &CharList,
+    candidates: &[&'a Box<CharList>],
+    iteration_level: usize,
+) -> Vec<Vec<&'a Box<CharList>>> {
     let mut results: Vec<Vec<&Box<CharList>>> = Vec::new();
     let m = CharList::subtract(goal, candidates[0]);
 
@@ -147,17 +106,15 @@ fn filter_candidates<'a>(
     goal: &CharList,
     candidates: &[&'a Box<CharList>],
 ) -> Vec<&'a Box<CharList>> {
-    let mut v: Vec<&Box<CharList>> = Vec::new();
-    for c in candidates {
-        if c.length() <= goal.length() {
-            if CharList::filter(goal, &**c) {
-                v.push(c);
-            }
-        }
-    }
+    let mut x = candidates
+        .iter()
+        .cloned()
+        .filter(|&c| c.length() <= goal.length() && CharList::filter(goal, &**c))
+        .collect::<Vec<_>>();
+
     // sort longest candidates to the front, this lessens the amount of backtracking
-    v.sort_by(|c1, c2| c2.length().cmp(&c1.length()));
-    return v;
+    x.sort_by(|c1, c2| c2.length().cmp(&c1.length()));
+    return x;
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
