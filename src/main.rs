@@ -36,7 +36,7 @@ pub async fn main() {
         candidates.push(key)
     }
     let candidates = filter_candidates(&goal, &candidates[..]);
-    let anagrams = anagram(&goal, candidates, opt.maximum_words_in_anagram);
+    let anagrams = anagram_async(&goal, candidates, opt.maximum_words_in_anagram).await;
     for set in anagrams {
         for clist in set {
             print!(" [ ");
@@ -49,6 +49,26 @@ pub async fn main() {
         println!("");
     }
 
+}
+
+async fn anagram_async<'a>(
+    goal: &CharList,
+    words: Vec<&'a Box<CharList>>,
+    iteration_level: usize,
+) -> Vec<Vec<&'a Box<CharList>>> {
+    let mut results: Vec<Vec<&Box<CharList>>> = Vec::new();
+    if iteration_level == 0 {
+        return results;
+    }
+
+    for (index, _) in words.iter().enumerate() {
+
+        let news = try_one_word_async(goal, &words[index..], iteration_level).await;
+        for n in news {
+            results.push(n);
+        }
+    }
+    return results;
 }
 
 fn anagram<'a>(
@@ -70,7 +90,32 @@ fn anagram<'a>(
     }
     return results;
 }
+async fn try_one_word_async<'a>(goal: &CharList, candidates: &[&'a Box<CharList>], iteration_level: usize) -> Vec<Vec<&'a Box<CharList>>> {
+    
+    let mut results: Vec<Vec<&Box<CharList>>> = Vec::new();
+    let m = CharList::subtract(goal, candidates[0]);
 
+    match m {
+        MatchResult::NoMatch => (),
+        MatchResult::FullMatch => {
+            // add to results
+            results.push(vec![candidates[0]]);
+        }
+        MatchResult::PartialMatch(remains) => {
+            let word = candidates[0];
+            let candidates = filter_candidates(goal, candidates);
+            let new_anagrams = anagram(&remains, candidates, iteration_level - 1);
+            for news in new_anagrams {
+                let mut first = vec![word];
+                for x in news {
+                    first.push(x);
+                }
+                results.push(first);
+            }
+        }
+    }
+    return results;
+}
 fn try_one_word<'a>(goal: &CharList, candidates: &[&'a Box<CharList>], iteration_level: usize) -> Vec<Vec<&'a Box<CharList>>> {
     
     let mut results: Vec<Vec<&Box<CharList>>> = Vec::new();
