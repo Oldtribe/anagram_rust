@@ -32,7 +32,7 @@ pub fn main() {
     let opt = Opt::from_args();
     let words = read_words(opt.wordfile, opt.minimum_candidate);
     let goal = CharList::from_string(&opt.goal.to_lowercase());
-    let mut candidates: Vec<&Box<CharList>> = Vec::new();
+    let mut candidates: Vec<&CharList> = Vec::new();
     for key in words.keys() {
         candidates.push(key)
     }
@@ -53,10 +53,10 @@ pub fn main() {
 
 fn anagram<'a>(
     goal: &CharList,
-    words: Vec<&'a Box<CharList>>,
+    words: Vec<&'a CharList>,
     iteration_level: usize,
-) -> Vec<Vec<&'a Box<CharList>>> {
-    let results: Vec<Vec<&Box<CharList>>> = Vec::new();
+) -> Vec<Vec<&'a CharList>> {
+    let results: Vec<Vec<&CharList>> = Vec::new();
     if iteration_level == 0 {
         return results;
     }
@@ -74,10 +74,10 @@ fn anagram<'a>(
 
 fn try_one_word<'a>(
     goal: &CharList,
-    candidates: &[&'a Box<CharList>],
+    candidates: &[&'a CharList],
     iteration_level: usize,
-) -> Vec<Vec<&'a Box<CharList>>> {
-    let mut results: Vec<Vec<&Box<CharList>>> = Vec::new();
+) -> Vec<Vec<&'a CharList>> {
+    let mut results: Vec<Vec<&CharList>> = Vec::new();
     let m = CharList::subtract(goal, candidates[0]);
 
     match m {
@@ -104,12 +104,12 @@ fn try_one_word<'a>(
 
 fn filter_candidates<'a>(
     goal: &CharList,
-    candidates: &[&'a Box<CharList>],
-) -> Vec<&'a Box<CharList>> {
+    candidates: &[&'a CharList],
+) -> Vec<&'a CharList> {
     let mut x = candidates
         .iter()
         .cloned()
-        .filter(|&c| c.length() <= goal.length() && CharList::filter(goal, &**c))
+        .filter(|&c| c.length() <= goal.length() && CharList::may_be_contained(goal, c))
         .collect::<Vec<_>>();
 
     // sort longest candidates to the front, this lessens the amount of backtracking

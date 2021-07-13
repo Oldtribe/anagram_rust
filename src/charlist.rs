@@ -167,8 +167,8 @@ impl CharList {
             }
         }
     }
-    /// filter = like subtract, but a boolean result
-    pub fn filter(big: &CharList, small: &CharList) -> bool {
+    /// may_be_contained = like subtract, but a boolean result
+    pub fn may_be_contained(big: &CharList, small: &CharList) -> bool {
         let mut bigiter = big.list.iter();
         let mut smalliter = small.list.iter();
         let mut bigc = bigiter.next();
@@ -342,7 +342,7 @@ mod tests {
     fn filter() {
         let b: CharList = CharList::from_string("abcdef");
         let s: CharList = CharList::from_string("ebcda");
-        let m = CharList::filter(&b, &s);
+        let m = CharList::may_be_contained(&b, &s);
         assert!(m);
     }
 }
