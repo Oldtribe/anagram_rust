@@ -1,3 +1,22 @@
+//! A program to generate anagrams
+//!
+//! # Input arguments
+//! 
+//! -g goalword
+//! The word whose anagrams are searched for.
+//!
+//! -w wordfile
+//! File that contains candidate words. Preferably in UTF-8 format.
+//!
+//! -m minimum_word_length
+//! Use only candidate words that are at least this long.
+//! Default value is 4 characters.
+//!
+//! -M maximum_candidates
+//! For each anagram use at most this many candidate words.
+//! Default 5 words.
+//! Use value 1 for single-word anagrams.
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -28,6 +47,22 @@ struct Opt {
     maximum_words_in_anagram: usize,
 }
 
+/// # Input arguments
+/// 
+/// -g goalword
+/// The word whose anagrams are searched for.
+///
+/// -w wordfile
+/// File that contains candidate words. Preferably in UTF-8 format.
+///
+/// -m minimum_word_length
+/// Use only candidate words that are at least this long.
+/// Default value is 4 characters.
+///
+/// -M maximum_candidates
+/// For each anagram use at most this many candidate words.
+/// Default 5 words.
+/// Use value 1 for single-word anagrams.
 pub fn main() {
     let opt = Opt::from_args();
     let words = read_words(opt.wordfile, opt.minimum_candidate);
