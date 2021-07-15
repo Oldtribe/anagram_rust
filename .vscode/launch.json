@@ -4,48 +4,38 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        
+
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'charlist'",
+            "name": "Debug unit tests in executable 'anagram'",
             "cargo": {
                 "args": [
-                    "build",
-                    "--bin=charlist",
-                    "--package=charlist"
+                    "test",
+                    "--no-run",
+                    "--bin=anagram",
+                    "--package=anagram"
                 ],
                 "filter": {
-                    "name": "charlist",
+                    "name": "anagram",
                     "kind": "bin"
                 }
             },
-            "args": [
-                "-g",
-                "graphics",
-                "-w",
-                "d:/rust/projects/charlist/wordlist/english.txt"
-
-            ],
+            "args": [],
             "cwd": "${workspaceFolder}"
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'charlist'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=charlist",
-                    "--package=charlist"
-                ],
-                "filter": {
-                    "name": "charlist",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
+            "name": "Run executable 'anagram'",
+            "program": "${workspaceFolder}/target/debug/anagram.exe",
+            "args": [
+                "-g",
+                "mentorgraphics",
+                "-w",
+                "wordlist/words_alpha.txt",
+                "-M",
+                "2"],
             "cwd": "${workspaceFolder}"
         }
     ]

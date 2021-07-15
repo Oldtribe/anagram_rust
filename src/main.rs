@@ -22,6 +22,7 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 use structopt::StructOpt;
+use itertools::join;
 
 use rayon::prelude::*;
 
@@ -71,18 +72,15 @@ pub fn main() {
     for key in words.keys() {
         candidates.push(key)
     }
-    let candidates = filter_candidates(&goal, &candidates[..]);
+    let candidates = filter_and_sort_candidates(&goal, &candidates[..]);
     let anagrams = anagram(&goal, candidates, opt.maximum_words_in_anagram);
     for set in anagrams {
         for clist in set {
-            print!(" [ ");
             let wordset = words.get(clist).unwrap();
-            for word in wordset {
-                print!("{} ", word)
-            }
-            print!("]");
+            let combined = join(wordset, " ");
+            print!("[{}] ", combined);
         }
-        println!("");
+        println!();
     }
 }
 
@@ -141,6 +139,18 @@ fn filter_candidates<'a>(
     goal: &CharList,
     candidates: &[&'a CharList],
 ) -> Vec<&'a CharList> {
+    let x = candidates
+        .iter()
+        .cloned()
+        .filter(|&c| c.length() <= goal.length() && CharList::may_be_contained(goal, c))
+        .collect::<Vec<_>>();
+    return x;
+}
+
+fn filter_and_sort_candidates<'a>(
+    goal: &CharList,
+    candidates: &[&'a CharList],
+) -> Vec<&'a CharList> {
     let mut x = candidates
         .iter()
         .cloned()
@@ -149,6 +159,7 @@ fn filter_candidates<'a>(
 
     // sort longest candidates to the front, this lessens the amount of backtracking
     x.sort_by(|c1, c2| c2.length().cmp(&c1.length()));
+
     return x;
 }
 

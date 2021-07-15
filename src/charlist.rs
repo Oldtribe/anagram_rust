@@ -212,6 +212,19 @@ impl CharList {
     pub fn length(&self) -> usize {
         self.length
     }
+
+    pub fn count(&self, x: char) -> usize {
+        let count = 0;
+        for c in &self.list {
+            if c.letter == x {
+                return c.count;
+            }
+            if c.letter > x {
+                return 0;
+            }
+        }
+        return count;
+    }
 }
 impl fmt::Display for CharList {
     /// Formatter for CharList
@@ -344,6 +357,14 @@ mod tests {
         let s: CharList = CharList::from_string("ebcda");
         let m = CharList::may_be_contained(&b, &s);
         assert!(m);
+    }
+    #[test]
+    fn count() {
+        let b: CharList = CharList::from_string("aabcdef");
+        assert!(b.count('a') == 2);
+        assert!(b.count('b') == 1);
+        assert!(b.count('g') == 0);
+
     }
 }
 
