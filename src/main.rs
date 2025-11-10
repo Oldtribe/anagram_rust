@@ -22,12 +22,12 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 use structopt::StructOpt;
-use itertools::join;
 
 use rayon::prelude::*;
 
 pub mod charcount;
 pub mod charlist;
+pub mod acompare;
 
 use charlist::CharList;
 use charlist::MatchResult;
@@ -46,6 +46,9 @@ struct Opt {
     /// minimum count of words in one anagram
     #[structopt(short = "M", default_value = "5")]
     maximum_words_in_anagram: usize,
+    /// maximum count of anagrams to print
+    #[structopt(short = "c", default_value = "10")]
+    maximum_anagrams: i32,
 }
 
 /// # Input arguments
@@ -66,22 +69,84 @@ struct Opt {
 /// Use value 1 for single-word anagrams.
 pub fn main() {
     let opt = Opt::from_args();
+
+    println!("Reading candidate words...");
+    
     let words = read_words(opt.wordfile, opt.minimum_candidate);
     let goal = CharList::from_string(&opt.goal.to_lowercase());
     let mut candidates: Vec<&CharList> = Vec::new();
     for key in words.keys() {
         candidates.push(key)
     }
+    
+    println!("Creating anagrams...");
+
     let candidates = filter_and_sort_candidates(&goal, &candidates[..]);
     let anagrams = anagram(&goal, candidates, opt.maximum_words_in_anagram);
-    for set in anagrams {
-        for clist in set {
-            let wordset = words.get(clist).unwrap();
-            let combined = join(wordset, " ");
-            print!("[{}] ", combined);
+
+    println!("Sorting anagrams...");
+
+    let mut all_anagrams = Vec::new();
+    for a in anagrams {
+        let strings = turn_into_strings(&a, &words);
+        for s in strings.unwrap() {
+            /*
+            println!("{}", &s);
+            */
+            all_anagrams.push(s);
         }
-        println!();
     }
+    let goalstring = opt.goal.to_string();
+
+    struct AWithCount {
+        count: usize,
+        string: String
+    }
+    let mut sorted_anagrams = Vec::new();
+
+    for string in all_anagrams {
+        let ts = acompare::get_transpositions(goalstring.clone(), string.clone());
+        let pts = ts.iter().map(|t| t).collect::<Vec<_>>();
+        let count = acompare::greedy_score(&pts);        
+        sorted_anagrams.push(AWithCount{count, string});
+    }
+
+    sorted_anagrams.sort_by(|c1, c2| {
+        c2.count.cmp(&c1.count)
+    });
+
+    println!();
+
+    let mut count = opt.maximum_anagrams;
+    for a in sorted_anagrams {
+        println!("{}", a.string);
+        count = count - 1;
+        if count <= 0 {
+            break;
+        }
+    }
+
+}
+
+fn turn_into_strings(set: &[&CharList], words: &HashMap<Box<CharList>, Vec<String>>) -> Option<Vec<String>> {
+    let rests = set.split_first();
+    if let Some((first, rest)) = rests {
+        let mut outs = Vec::new();
+        let wordset = words.get(*first).unwrap();
+        if let Some(trailing_strings) = turn_into_strings(rest, words) {
+            for w in wordset {
+                for s in &trailing_strings {
+                    outs.push(format!("{} {}", w.clone(), s.clone()));
+                }
+            }
+        } else {
+            for w in wordset {
+                outs.push(format!("{}", w.clone()));
+            }
+        }
+        return Some(outs);
+    }
+    return None;
 }
 
 fn anagram<'a>(
@@ -171,6 +236,9 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
+// read_words reads a file of words, then builds a CharList of each.
+// it returns a HashMap where the CharList of each word is the key, and a vector of all words that have this CharList are the value.
+// This way, anagrammatic single words like 'karies', 'rieska' and 'eskari' occupy one slot in the HashMap.
 fn read_words(
     filename: std::path::PathBuf,
     minimum_length: usize,
@@ -183,12 +251,17 @@ fn read_words(
                     Ok(word) => {
                         if word.len() >= minimum_length {
                             let key = Box::new(CharList::from_string(&word.to_lowercase()));
-                            if !map.contains_key(&key) {
-                                map.insert(key, vec![word]);
-                            } else {
-                                let candidates = map.get_mut(&key).unwrap();
-                                if !candidates.contains(&word) {
-                                    candidates.push(word);
+                            let candidates = map.get_mut(&key);
+                            match candidates {
+                                // Key does not exist. add it
+                                None => {
+                                    map.insert(key, vec![word]);
+                                }
+                                // Key exists, append word to the value vector
+                                Some(words) => {
+                                    if !words.contains(&word) {
+                                        words.push(word)
+                                    }
                                 }
                             }
                         }
